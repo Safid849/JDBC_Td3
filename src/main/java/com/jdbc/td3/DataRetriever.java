@@ -168,51 +168,58 @@ public class DataRetriever {
             return;
         }
 
+        // Le SQL pointe maintenant vers la table de jointure
         String attachSql = """
-                    UPDATE ingredient
-                    SET id_dish = ?
-                    WHERE id = ?
-                """;
+                INSERT INTO DishIngredient (id_dish, id_ingredient, quantity_required, unit)
+                VALUES (?, ?, ?, ?::unit_type)
+            """;
 
         try (PreparedStatement ps = conn.prepareStatement(attachSql)) {
             for (Ingredient ingredient : ingredients) {
                 ps.setInt(1, dishId);
                 ps.setInt(2, ingredient.getId());
-                ps.addBatch(); // Can be substitute ps.executeUpdate() but bad performance
+
+                // On récupère la quantité et l'unité depuis l'objet ingredient
+                // Note : Il faudra s'assurer que ton objet Ingredient a ces champs ou utiliser l'objet DishIngredient
+                ps.setDouble(3, ingredient.getQuantity());
+                ps.setString(4, "KG"); // Valeur par défaut ou à récupérer dynamiquement
+
+                ps.addBatch();
             }
             ps.executeBatch();
         }
     }
-
     private List<Ingredient> findIngredientByDishId(Integer idDish) {
-        DBConnection dbConnection = new DBConnection();
-        Connection connection = dbConnection.getConnection();
         List<Ingredient> ingredients = new ArrayList<>();
-        try {
-            PreparedStatement preparedStatement = connection.prepareStatement(
-                    """
-                            select ingredient.id, ingredient.name, ingredient.price, ingredient.category, ingredient.required_quantity
-                            from ingredient where id_dish = ?;
-                            """);
+        // On joint la table ingredient avec la table de jointure DishIngredient
+        String sql = """
+            SELECT i.id, i.name, i.price, i.category, di.quantity_required
+            FROM ingredient i
+            JOIN DishIngredient di ON i.id = di.id_ingredient
+            WHERE di.id_dish = ?;
+            """;
+
+        try (Connection connection = new DBConnection().getConnection();
+             PreparedStatement preparedStatement = connection.prepareStatement(sql)) {
+
             preparedStatement.setInt(1, idDish);
             ResultSet resultSet = preparedStatement.executeQuery();
+
             while (resultSet.next()) {
                 Ingredient ingredient = new Ingredient();
                 ingredient.setId(resultSet.getInt("id"));
                 ingredient.setName(resultSet.getString("name"));
                 ingredient.setPrice(resultSet.getDouble("price"));
                 ingredient.setCategory(CategoryEnum.valueOf(resultSet.getString("category")));
-                Object requiredQuantity = resultSet.getObject("required_quantity");
-                ingredient.setQuantity(requiredQuantity == null ? null : resultSet.getDouble("required_quantity"));
+                // On récupère la quantité qui est maintenant dans la table de jointure
+                ingredient.setQuantity(resultSet.getDouble("quantity_required"));
                 ingredients.add(ingredient);
             }
-            dbConnection.closeConnection(connection);
-            return ingredients;
         } catch (SQLException e) {
             throw new RuntimeException(e);
         }
+        return ingredients;
     }
-
 
     private String getSerialSequenceName(Connection conn, String tableName, String columnName)
             throws SQLException {
@@ -263,5 +270,56 @@ public class DataRetriever {
         try (PreparedStatement ps = conn.prepareStatement(setValSql)) {
             ps.executeQuery();
         }
+    }
+    // À ajouter dans DataRetriever.java pour la Question 4
+    public Double getDishCost(int idDish) {
+        double totalCost = 0.0;
+        String sql = """
+            SELECT i.price, di.quantity_required 
+            FROM DishIngredient di
+            JOIN ingredient i ON di.id_ingredient = i.id
+            WHERE di.id_dish = ?
+            """;
+
+        try (Connection conn = new DBConnection().getConnection();
+             PreparedStatement ps = conn.prepareStatement(sql)) {
+            ps.setInt(1, idDish);
+            ResultSet rs = ps.executeQuery();
+            while (rs.next()) {
+                totalCost += rs.getDouble("price") * rs.getDouble("quantity_required");
+            }
+        } catch (SQLException e) {
+            e.printStackTrace();
+        }
+        return totalCost;
+    }
+
+    public Double getGrossMargin(int idDish) throws Exception {
+        // 1. Calcul du coût total (Somme des ingrédients)
+        Double cost = getDishCost(idDish);
+        Double sellingPrice = null;
+
+        // 2. Récupération du prix de vente du plat
+        String sql = "SELECT price FROM dish WHERE id = ?";
+
+        try (Connection conn = new DBConnection().getConnection();
+             PreparedStatement ps = conn.prepareStatement(sql)) {
+            ps.setInt(1, idDish);
+            ResultSet rs = ps.executeQuery();
+
+            if (rs.next()) {
+                double p = rs.getDouble("price");
+                if (rs.wasNull()) {
+                    // Règle du sujet : Exception si le prix est NULL
+                    throw new Exception("X Exception (prix NULL)");
+                }
+                sellingPrice = p;
+            } else {
+                throw new Exception("Plat non trouvé");
+            }
+        }
+
+        // 3. Marge = Prix de vente - Coût
+        return sellingPrice - cost;
     }
 }
