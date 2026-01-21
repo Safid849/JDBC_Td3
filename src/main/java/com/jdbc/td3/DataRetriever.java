@@ -168,7 +168,6 @@ public class DataRetriever {
             return;
         }
 
-        // Le SQL pointe maintenant vers la table de jointure
         String attachSql = """
                 INSERT INTO DishIngredient (id_dish, id_ingredient, quantity_required, unit)
                 VALUES (?, ?, ?, ?::unit_type)
@@ -179,11 +178,8 @@ public class DataRetriever {
                 ps.setInt(1, dishId);
                 ps.setInt(2, ingredient.getId());
 
-                // On récupère la quantité et l'unité depuis l'objet ingredient
-                // Note : Il faudra s'assurer que ton objet Ingredient a ces champs ou utiliser l'objet DishIngredient
                 ps.setDouble(3, ingredient.getQuantity());
-                ps.setString(4, "KG"); // Valeur par défaut ou à récupérer dynamiquement
-
+                ps.setString(4, "KG");
                 ps.addBatch();
             }
             ps.executeBatch();
@@ -251,7 +247,6 @@ public class DataRetriever {
         updateSequenceNextValue(conn, tableName, columnName, sequenceName);
 
         String nextValSql = "SELECT nextval(?)";
-
         try (PreparedStatement ps = conn.prepareStatement(nextValSql)) {
             ps.setString(1, sequenceName);
             try (ResultSet rs = ps.executeQuery()) {
@@ -271,7 +266,6 @@ public class DataRetriever {
             ps.executeQuery();
         }
     }
-    // À ajouter dans DataRetriever.java pour la Question 4
     public Double getDishCost(int idDish) {
         double totalCost = 0.0;
         String sql = """
@@ -295,11 +289,9 @@ public class DataRetriever {
     }
 
     public Double getGrossMargin(int idDish) throws Exception {
-        // 1. Calcul du coût total (Somme des ingrédients)
         Double cost = getDishCost(idDish);
         Double sellingPrice = null;
 
-        // 2. Récupération du prix de vente du plat
         String sql = "SELECT price FROM dish WHERE id = ?";
 
         try (Connection conn = new DBConnection().getConnection();
@@ -319,7 +311,6 @@ public class DataRetriever {
             }
         }
 
-        // 3. Marge = Prix de vente - Coût
         return sellingPrice - cost;
     }
 }
