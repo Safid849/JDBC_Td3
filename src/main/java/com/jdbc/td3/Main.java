@@ -1,54 +1,64 @@
 package com.jdbc.td3;
 
+import java.time.Instant;
 import java.util.List;
 
 public class Main {
     public static void main(String[] args) {
         DataRetriever retriever = new DataRetriever();
 
-        System.out.println("=== DÉBUT DES TESTS JDBC (PostgreSQL) ===\n");
+        System.out.println("--- DÉBUT DES TESTS (TD3 & TD4) ---");
 
-        // 1. Test de findDishById
-        testFindDish(retriever, 1); // Salade fraîche
-
-        // 2. Test de getDishCost (Question 4)
-        testGetCost(retriever, 1);
-
-        // 3. Test de getGrossMargin (Question 5 - Cas avec prix)
-        testMargin(retriever, 1);
-
-        // 4. Test de getGrossMargin (Question 5 - Cas avec prix NULL)
-        testMargin(retriever, 3); // Riz aux légumes (Prix est NULL en base)
-
-        System.out.println("\n=== FIN DES TESTS ===");
-    }
-
-    private static void testFindDish(DataRetriever retriever, int id) {
+        System.out.println("\n[Test 1] Calcul du coût de revient :");
         try {
-            Dish dish = retriever.findDishById(id);
-            System.out.println("[FIND] Plat trouvé : " + dish.getName() + " (" + dish.getDishType() + ")");
-            System.out.println("       Nombre d'ingrédients : " + dish.getIngredients().size());
-        } catch (Exception e) {
-            System.err.println("[FIND] Erreur : " + e.getMessage());
-        }
-    }
+            Dish salade = retriever.findDishById(1); // Salade fraîche
+            System.out.println("Plat récupéré : " + salade.getName());
 
-    private static void testGetCost(DataRetriever retriever, int id) {
-        try {
-            Double cost = retriever.getDishCost(id);
-            System.out.println("[COST] Coût de revient pour le plat " + id + " : " + cost + " Ar");
+            double cost = salade.getDishCost();
+            System.out.println("Coût de revient : " + cost + " Ar");
+            System.out.println("Valeur attendue (Sujet TD3) : 250.00 Ar");
         } catch (Exception e) {
-            System.err.println("[COST] Erreur : " + e.getMessage());
+            System.err.println("Erreur Test 1 : " + e.getMessage());
         }
-    }
 
-    private static void testMargin(DataRetriever retriever, int id) {
+        System.out.println("\n[Test 2] Calcul de la marge :");
         try {
-            Double margin = retriever.getGrossMargin(id);
-            System.out.println("[MARGIN] Marge brute pour le plat " + id + " : " + margin + " Ar");
+            Dish fruit = retriever.findDishById(5); // Salade de fruits (Prix NULL dans le sujet)
+            System.out.println("Plat : " + fruit.getName() + " | Prix : " + fruit.getPrice());
+            System.out.println("Marge : " + fruit.getGrossMargin() + " Ar");
         } catch (Exception e) {
-            // C'est ici que l'exception pour le prix NULL sera rattrapée
-            System.out.println("[MARGIN] Résultat attendu pour le plat " + id + " : " + e.getMessage());
+            System.out.println("Exception attendue reçue : " + e.getMessage());
         }
+
+        System.out.println("\n[Test 3] Niveau de stock (Laitue) :");
+        try {
+            Dish salade = retriever.findDishById(1);
+            Ingredient laitue = salade.getDishIngredients().get(0).getIngredient();
+
+            Instant avantMouvement = Instant.parse("2024-01-02T10:00:00Z");
+            Instant apresMouvement = Instant.parse("2024-01-07T10:00:00Z");
+
+            System.out.println("Stock de Laitue avant le 06/01 : " + laitue.getStockValueAt(avantMouvement) + " KG");
+            System.out.println("Stock de Laitue après le 06/01 : " + laitue.getStockValueAt(apresMouvement) + " KG");
+            System.out.println("Valeur attendue finale : 4.8 KG (5.0 - 0.2)");
+        } catch (Exception e) {
+            System.err.println("Erreur Test 3 : " + e.getMessage());
+        }
+
+        System.out.println("\n[Test 4] Sauvegarde d'un nouveau plat :");
+        try {
+            Dish nouveauPlat = new Dish();
+            nouveauPlat.setId(10); // Nouvel ID
+            nouveauPlat.setName("Café Gourmand");
+            nouveauPlat.setDishType(DishTypeEnum.DESSERT);
+            nouveauPlat.setPrice(5000.0);
+
+            Dish saved = retriever.saveDish(nouveauPlat);
+            System.out.println("Plat sauvegardé avec succès : " + saved.getName());
+        } catch (Exception e) {
+            System.err.println("Erreur Test 4 : " + e.getMessage());
+        }
+
+        System.out.println("\n--- FIN DES TESTS ---");
     }
 }
