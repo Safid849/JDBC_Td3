@@ -4,22 +4,19 @@ import java.util.Objects;
 
 public class DishIngredient {
     private Integer id;
-    private Integer idDish;
-    private Integer idIngredient;
+    private Dish dish;
+    private Ingredient ingredient;
     private Double quantityRequired;
     private UnitEnum unit;
     public DishIngredient() {}
 
-    // Getters et Setters
     public Integer getId() { return id; }
     public void setId(Integer id) { this.id = id; }
 
-    public Integer getIdDish() { return idDish; }
-    public void setIdDish(Integer idDish) { this.idDish = idDish; }
-
-    public Integer getIdIngredient() { return idIngredient; }
-    public void setIdIngredient(Integer idIngredient) { this.idIngredient = idIngredient; }
-
+    public Dish getDish() { return dish; }
+    public void setDish(Dish dish) { this.dish = dish; }
+    public Ingredient getIngredient() { return ingredient; }
+    public void setIngredient(Ingredient ingredient) { this.ingredient = ingredient; }
     public Double getQuantityRequired() { return quantityRequired; }
     public void setQuantityRequired(Double quantityRequired) { this.quantityRequired = quantityRequired; }
 
@@ -31,20 +28,20 @@ public class DishIngredient {
         if (this == o) return true;
         if (o == null || getClass() != o.getClass()) return false;
         DishIngredient that = (DishIngredient) o;
-        return Objects.equals(id, that.id) && Objects.equals(idDish, that.idDish) && Objects.equals(idIngredient, that.idIngredient) && Objects.equals(quantityRequired, that.quantityRequired) && unit == that.unit;
+        return Objects.equals(id, that.id) && Objects.equals(dish, that.dish) && Objects.equals(ingredient, that.ingredient) && Objects.equals(quantityRequired, that.quantityRequired) && unit == that.unit;
     }
 
     @Override
     public int hashCode() {
-        return Objects.hash(id, idDish, idIngredient, quantityRequired, unit);
+        return Objects.hash(id, dish, ingredient, quantityRequired, unit);
     }
 
     @Override
     public String toString() {
         return "DishIngredient{" +
                 "id=" + id +
-                ", idDish=" + idDish +
-                ", idIngredient=" + idIngredient +
+                ", Dish=" + dish +
+                ", Ingredient=" + ingredient +
                 ", quantityRequired=" + quantityRequired +
                 ", unit=" + unit +
                 '}';
