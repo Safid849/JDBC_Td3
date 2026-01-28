@@ -8,7 +8,7 @@ public class Dish {
     private Double price;
     private String name;
     private DishTypeEnum dishType;
-    private List<DishIngredient> dishIngredientsList;
+    private List<DishIngredient> dishIngredientList;
 
     public Double getPrice() {
         return price;
@@ -18,25 +18,25 @@ public class Dish {
         this.price = price;
     }
 
-    public Double getDishCost() {
-        double totalPrice = 0;
-        if (dishIngredientsList != null) {
-            for (DishIngredient dishIngredient : dishIngredientsList) {
-                Ingredient newIngredient = dishIngredient.getIngredient();
-                totalPrice += newIngredient.getPrice() * dishIngredient.getQuantityRequired();
-            }
-        }
-        return totalPrice;
+    public double getDishCost() {
+        return dishIngredientList.stream()
+                .filter(di -> di.getIngredient() != null)
+                .mapToDouble(di -> {
+                    double unitPrice = di.getIngredient().getPrice();
+                    double quantity = di.getQuantityRequired();
+                    return unitPrice * quantity;
+                })
+                .sum();
     }
 
     public Dish() {
     }
 
-    public Dish(Integer id, String name, DishTypeEnum dishType, List<DishIngredient> dishIngredientsList) {
+    public Dish(Integer id, String name, DishTypeEnum dishType, List<DishIngredient> dishIngredientList) {
         this.id = id;
         this.name = name;
         this.dishType = dishType;
-        this.dishIngredientsList = dishIngredientsList;
+        this.dishIngredientList = dishIngredientList;
     }
 
 
@@ -65,27 +65,27 @@ public class Dish {
     }
 
     public List<DishIngredient> getDishIngredients() {
-        return dishIngredientsList;
+        return dishIngredientList;
     }
 
     public void setDishIngredient(List<DishIngredient> dishIngredientsList) {
         if (dishIngredientsList == null) {
-            this.dishIngredientsList = null;
+            this.dishIngredientList = null;
             return;
         }
-        this.dishIngredientsList = dishIngredientsList;
+        this.dishIngredientList = dishIngredientsList;
     }
 
     @Override
     public boolean equals(Object o) {
         if (o == null || getClass() != o.getClass()) return false;
         Dish dish = (Dish) o;
-        return Objects.equals(id, dish.id) && Objects.equals(name, dish.name) && dishType == dish.dishType && Objects.equals(dishIngredientsList, dish.dishIngredientsList);
+        return Objects.equals(id, dish.id) && Objects.equals(name, dish.name) && dishType == dish.dishType && Objects.equals(dishIngredientList, dish.dishIngredientList);
     }
 
     @Override
     public int hashCode() {
-        return Objects.hash(id, name, dishType, dishIngredientsList);
+        return Objects.hash(id, name, dishType, dishIngredientList);
     }
 
     @Override
@@ -95,7 +95,7 @@ public class Dish {
                 ", price=" + price +
                 ", name='" + name + '\'' +
                 ", dishType=" + dishType +
-                ", dishIngredient=" + dishIngredientsList+
+                ", dishIngredient=" + dishIngredientList+
                 '}';
     }
 
