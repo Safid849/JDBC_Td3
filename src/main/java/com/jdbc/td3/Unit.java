@@ -1,6 +1,6 @@
 package com.jdbc.td3;
 
-public enum UnitEnum {
+public enum Unit {
     PCS,
     KG,
     L
