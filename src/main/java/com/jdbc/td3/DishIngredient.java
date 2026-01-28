@@ -7,7 +7,7 @@ public class DishIngredient {
     private Dish dish;
     private Ingredient ingredient;
     private Double quantityRequired;
-    private UnitEnum unit;
+    private Unit unit;
     public DishIngredient() {}
 
     public Integer getId() { return id; }
@@ -20,8 +20,8 @@ public class DishIngredient {
     public Double getQuantityRequired() { return quantityRequired; }
     public void setQuantityRequired(Double quantityRequired) { this.quantityRequired = quantityRequired; }
 
-    public UnitEnum getUnit() { return unit; }
-    public void setUnit(UnitEnum unit) { this.unit = unit; }
+    public Unit getUnit() { return unit; }
+    public void setUnit(Unit unit) { this.unit = unit; }
 
     @Override
     public boolean equals(Object o) {
