@@ -1,5 +1,5 @@
 package com.jdbc.td3;
 
-public enum TypeMouvement {
+public enum MovementTypeEnum {
     IN, OUT
 }
