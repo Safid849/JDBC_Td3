@@ -2,46 +2,44 @@ package com.jdbc.td3;
 
 import java.time.Instant;
 
-public class StockIngredient {
+public class StockMovement {
     private int id;
-    private double quantity;
-    private UnitEnum unit;
-    private TypeMouvement typeMouvement;
-    private Instant date;
+    private StockValue value;
+    private Unit unit;
+    private MovementTypeEnum movementTypeEnum;
+    private Instant creationDatetime;
 
-    public StockIngredient(){}
+    public StockMovement(){}
 
-    public StockIngredient(int id, double quantity, UnitEnum unit, TypeMouvement tYpeMouvement, Instant date) {
+    public StockMovement(int id, Unit unit, MovementTypeEnum tYpeEnumMovement, Instant creationDatetime) {
         this.id = id;
-        this.quantity = quantity;
         this.unit = unit;
-        this.typeMouvement = tYpeMouvement;
-        this.date = date;
+        this.movementTypeEnum = tYpeEnumMovement;
+        this.creationDatetime = creationDatetime;
     }
 
     public int getId() { return id; }
     public void setId(int id) { this.id = id; }
 
-    public double getQuantity() { return quantity; }
-    public void setQuantity(double quantity) { this.quantity = quantity; }
+    public StockValue getValue() { return value; }
+    public void setValue(StockValue value) { this.value = value; }
 
-    public UnitEnum getUnit() { return unit; }
-    public void setUnit(UnitEnum unit) { this.unit = unit; }
+    public Unit getUnit() { return unit; }
+    public void setUnit(Unit unit) { this.unit = unit; }
 
-    public TypeMouvement getTypeMouvement() { return typeMouvement; }
-    public void setTypeMouvement(TypeMouvement tYpeMouvement) { this.typeMouvement = tYpeMouvement; }
+    public MovementTypeEnum getTypeMovement() { return movementTypeEnum; }
+    public void setTypeMovement(MovementTypeEnum tYpeEnumMovement) { this.movementTypeEnum = tYpeEnumMovement; }
 
-    public Instant getDate() { return date; }
-    public void setDate(Instant date) { this.date = date; }
+    public Instant getDate() { return creationDatetime; }
+    public void setDate(Instant creationDatetime) { this.creationDatetime = creationDatetime; }
 
     @Override
     public String toString() {
         return "StockIngredient{" +
                 "id=" + id +
-                ", quantity=" + quantity +
                 ", unit=" + unit +
-                ", tYpeMouvement=" + typeMouvement +
-                ", date=" + date +
+                ", tYpeMouvement=" + movementTypeEnum +
+                ", creationDatetime=" + creationDatetime +
                 '}';
     }
 }
