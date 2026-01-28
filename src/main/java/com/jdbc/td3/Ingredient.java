@@ -20,7 +20,7 @@ public class Ingredient {
         this.id = id;
     }
 
-    public Ingredient(Integer id, String name, CategoryEnum category, Double price, List<StockMovement> stockMouvementList) {
+    public Ingredient(Integer id, String name, CategoryEnum category, Double price, List<StockMovement> stockMovementList) {
         this.id = id;
         this.name = name;
         this.category = category;
@@ -105,7 +105,7 @@ public class Ingredient {
         Unit displayUnit = stockMovementList.stream()
                 .filter(mvt -> !mvt.getDate().isAfter(t))
                 .map(StockMovement::getUnit)
-                .reduce((first, second) -> second) // On prend le dernier élément du flux
+                .reduce((first, second) -> second)
                 .orElse(null);
 
         return new StockValue(totalQuantity, displayUnit);

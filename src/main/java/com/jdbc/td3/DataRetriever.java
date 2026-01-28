@@ -28,10 +28,12 @@ public class DataRetriever {
             throw new RuntimeException(e);
         }
     }
+
     private List<DishIngredient> findDishIngredients(Integer idDish) {
         List<DishIngredient> list = new ArrayList<>();
         String sql = """
-            SELECT di.quantity_required, di.unit, i.id, i.name, i.price, i.category
+            
+                SELECT di.quantity_required, di.unit, i.id, i.name, i.price, i.category
             FROM DishIngredient di
             JOIN ingredient i ON di.id_ingredient = i.id
             WHERE di.id_dish = ?
@@ -46,11 +48,12 @@ public class DataRetriever {
                     ing.setName(rs.getString("name"));
                     ing.setPrice(rs.getDouble("price"));
                     ing.setCategory(CategoryEnum.valueOf(rs.getString("category")));
+                    ing.setStockMovementList(findStockMovementsByIngredientId(ing.getId()));
 
                     DishIngredient di = new DishIngredient();
                     di.setIngredient(ing);
                     di.setQuantityRequired(rs.getDouble("quantity_required"));
-                    di.setUnit(UnitEnum.valueOf(rs.getString("unit")));
+                    di.setUnit(Unit.valueOf(rs.getString("unit")));
                     list.add(di);
                 }
             }
@@ -62,9 +65,13 @@ public class DataRetriever {
 
 
     public Dish saveDish(Dish toSave) {
-        String sql = """
-            INSERT INTO dish (id, name, dish_type, selling_price) VALUES (?, ?, ?::dish_type, ?)
-            ON CONFLICT (id) DO UPDATE SET name=EXCLUDED.name, dish_type=EXCLUDED.dish_type, selling_price=EXCLUDED.selling_price
+        String sql =
+                """
+            INSERT INTO dish (id, name, dish_type, selling_price) VALUES (?, ?, ?::
+                dish_type, ?)
+            ON CONFLICT (id) DO UPDATE SET name=EXCLUDED.name, dish_type=EXCLUDED.dish_type,
+                selling_price=EXCLUDED.
+                selling_price
             RETURNING id
             """;
         try (Connection conn = new DBConnection().getConnection()) {
@@ -124,8 +131,8 @@ public class DataRetriever {
             rs.next(); return rs.getInt(1);
         }
     }
-    public List<StockIngredient> findStockMovementsByIngredientId(int ingredientId) {
-        List<StockIngredient> movements = new ArrayList<>();
+    public List<StockMovement> findStockMovementsByIngredientId(int ingredientId) {
+        List<StockMovement> movements = new ArrayList<>();
         String sql = "SELECT id, quantity, type, unit, creation_datetime FROM stock_movement WHERE id_ingredient = ?";
 
         try (Connection conn = new DBConnection().getConnection();
@@ -134,17 +141,67 @@ public class DataRetriever {
             ps.setInt(1, ingredientId);
             try (ResultSet rs = ps.executeQuery()) {
                 while (rs.next()) {
-                    StockIngredient mvt = new StockIngredient();
+                    StockMovement mvt = new StockMovement();
                     mvt.setId(rs.getInt("id"));
-                    mvt.setQuantity(rs.getDouble("quantity"));
-                    mvt.setTypeMouvement(TypeMouvement.valueOf(rs.getString("type")));
+                    Unit unit = Unit.valueOf(rs.getString("unit"));
+                    double qty = rs.getDouble("quantity");
+                    mvt.setValue(new StockValue(qty, unit));
+                    mvt.setUnit(unit);
+
+                    mvt.setTypeMovement(MovementTypeEnum.valueOf(rs.getString("type")));
                     mvt.setDate(rs.getTimestamp("creation_datetime").toInstant());
                     movements.add(mvt);
                 }
             }
         } catch (SQLException e) {
-            throw new RuntimeException("Erreur lors de la récupération des stocks", e);
+            throw new RuntimeException("Erreur lors de la récupération  des stocks", e);
         }
         return movements;
+    }
+    public Ingredient saveIngredient(Ingredient toSave) {
+        String sqlIng = """
+        INSERT INTO ingredient (id, name, price, category)
+        VALUES (?, ?, ?, ?::ingredient_category)
+        ON CONFLICT (id) DO UPDATE SET name=EXCLUDED.name, price=EXCLUDED.price, category=EXCLUDED.category
+        """;
+
+        try (Connection conn = new DBConnection().getConnection()) {
+            conn.setAutoCommit(false);
+
+            try (PreparedStatement ps = conn.prepareStatement(sqlIng)) {
+                ps.setInt(1, toSave.getId());
+                ps.setString(2, toSave.getName());
+                ps.setDouble(3, toSave.getPrice());
+                ps.setString(4, toSave.getCategory().name());
+                ps.executeUpdate();
+            }
+
+            String sqlMvt = """
+            INSERT INTO stock_movement (id, id_ingredient, quantity, type, unit, creation_datetime)
+            VALUES (?, ?, ?, ?::mouvement_type, ?::unit_type, ?)
+            ON CONFLICT (id) DO NOTHING
+            """;
+
+            try (PreparedStatement psMvt = conn.prepareStatement(sqlMvt)) {
+                for (StockMovement mvt : toSave.getStockMovementList()) {
+                    psMvt.setInt(1, mvt.getId());
+                    psMvt.setInt(2, toSave.getId());
+                    psMvt.setDouble(3, mvt.getValue().getQuantity());
+                    psMvt.setString(4, mvt.getTypeMovement().name());
+
+                    String unitName = (mvt.getUnit() != null) ? mvt.getUnit().name() : mvt.getValue().getUnit().name();
+                    psMvt.setString(5, unitName);
+
+                    psMvt.setTimestamp(6, java.sql.Timestamp.from(mvt.getDate()));
+                    psMvt.addBatch();
+                }
+                psMvt.executeBatch();
+            }
+
+            conn.commit();
+        } catch (SQLException e) {
+            throw new RuntimeException("Erreur sauvegarde cascade : " + e.getMessage());
+        }
+        return toSave;
     }
 }

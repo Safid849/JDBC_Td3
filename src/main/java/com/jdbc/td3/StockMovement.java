@@ -11,10 +11,10 @@ public class StockMovement {
 
     public StockMovement(){}
 
-    public StockMovement(int id, Unit unit, MovementTypeEnum tYpeEnumMovement, Instant creationDatetime) {
+    public StockMovement(int id, Unit unit, MovementTypeEnum movementTypeEnum, Instant creationDatetime) {
         this.id = id;
         this.unit = unit;
-        this.movementTypeEnum = tYpeEnumMovement;
+        this.movementTypeEnum = movementTypeEnum;
         this.creationDatetime = creationDatetime;
     }
 
@@ -28,7 +28,7 @@ public class StockMovement {
     public void setUnit(Unit unit) { this.unit = unit; }
 
     public MovementTypeEnum getTypeMovement() { return movementTypeEnum; }
-    public void setTypeMovement(MovementTypeEnum tYpeEnumMovement) { this.movementTypeEnum = tYpeEnumMovement; }
+    public void setTypeMovement(MovementTypeEnum movementTypeEnum) { this.movementTypeEnum = movementTypeEnum; }
 
     public Instant getDate() { return creationDatetime; }
     public void setDate(Instant creationDatetime) { this.creationDatetime = creationDatetime; }
