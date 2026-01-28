@@ -10,7 +10,7 @@ public class Ingredient {
     private String name;
     private CategoryEnum category;
     private Double price;
-    private List<StockIngredient> stockIngredientList = new ArrayList<>();
+    private List<StockMovement> stockMovementList = new ArrayList<>();
 
 
     public Ingredient() {
@@ -20,12 +20,12 @@ public class Ingredient {
         this.id = id;
     }
 
-    public Ingredient(Integer id, String name, CategoryEnum category, Double price, List<StockIngredient> stockMouvementList) {
+    public Ingredient(Integer id, String name, CategoryEnum category, Double price, List<StockMovement> stockMouvementList) {
         this.id = id;
         this.name = name;
         this.category = category;
         this.price = price;
-        this.stockIngredientList = stockIngredientList;
+        this.stockMovementList = stockMovementList;
     }
 
 
@@ -60,11 +60,13 @@ public class Ingredient {
     public void setPrice(Double price) {
         this.price = price;
     }
-    public List<StockIngredient> getStockMouvementList() {
-        return stockIngredientList;
+
+    public List<StockMovement> getStockMovementList() {
+        return stockMovementList;
     }
-    public void setStockIngredientList(List<StockIngredient> stockIngredientList) {
-        this.stockIngredientList = stockIngredientList;
+
+    public void setStockMovementList(List<StockMovement> stockMovementList) {
+        this.stockMovementList = stockMovementList;
     }
 
 
@@ -87,22 +89,26 @@ public class Ingredient {
                 ", name='" + name + '\'' +
                 ", category=" + category +
                 ", price=" + price +
-                ", StockIngredient=" + stockIngredientList +
+                ", StockIngredient=" + stockMovementList +
                 '}';
     }
-    public double getStockValueAt(Instant t) {
-        double totalStock = 0.0;
 
-        for (StockIngredient mvt : stockIngredientList) {
-            if (!mvt.getDate().isAfter(t)) {
-                if (mvt.getTypeMouvement() == TypeMouvement.IN) {
-                    totalStock += mvt.getQuantity();
-                } else if (mvt.getTypeMouvement() == TypeMouvement.OUT) {
-                    totalStock -= mvt.getQuantity();
-                }
-            }
-        }
-        return totalStock;
+    public StockValue getStockValueAt(Instant t) {
+        double totalQuantity = stockMovementList.stream()
+                .filter(mvt -> !mvt.getDate().isAfter(t))
+                .mapToDouble(mvt -> {
+                    double qty = mvt.getValue().getQuantity();
+                    return (mvt.getTypeMovement() == MovementTypeEnum.IN) ? qty : -qty;
+                })
+                .sum();
+
+        Unit displayUnit = stockMovementList.stream()
+                .filter(mvt -> !mvt.getDate().isAfter(t))
+                .map(StockMovement::getUnit)
+                .reduce((first, second) -> second) // On prend le dernier élément du flux
+                .orElse(null);
+
+        return new StockValue(totalQuantity, displayUnit);
     }
 }
 
