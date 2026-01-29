@@ -103,6 +103,6 @@ public class Dish {
         if (price == null) {
             throw new RuntimeException("Price is null");
         }
-        return price - getDishCost();
+        return (this.price != null) ? this.price - getDishCost() : 0.0;
     }
 }
