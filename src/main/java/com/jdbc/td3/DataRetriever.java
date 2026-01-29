@@ -6,6 +6,76 @@ import java.util.List;
 
 public class DataRetriever {
 
+    private double getCurrentStock(Connection conn, int ingredientId) throws SQLException {
+        String sqlInitial = "SELECT initial_stock FROM ingredient WHERE id = ?";
+        double initialStock = 0;
+        try (PreparedStatement ps = conn.prepareStatement(sqlInitial)) {
+            ps.setInt(1, ingredientId);
+            try (ResultSet rs = ps.executeQuery()) {
+                if (rs.next()) initialStock = rs.getDouble("initial_stock");
+            }
+        }
+        String sqlMvt = "SELECT SUM(quantity) FROM stock_movement WHERE id_ingredient = ?";
+        double movementSum = 0;
+        try (PreparedStatement ps = conn.prepareStatement(sqlMvt)) {
+            ps.setInt(1, ingredientId);
+            try (ResultSet rs = ps.executeQuery()) {
+                if (rs.next()) movementSum = rs.getDouble(1);
+            }
+        }
+        return initialStock + movementSum;
+    }
+    public Order saveOrder(Order orderToSave) {
+        String sqlOrder = "INSERT INTO \"order\" (reference, creation_datetime) VALUES (?, ?) RETURNING id";
+        String sqlDishOrder = "INSERT INTO dish_order (id_order, id_dish, quantity) VALUES (?, ?, ?)";
+
+        try (Connection conn = new DBConnection().getConnection()) {
+            conn.setAutoCommit(false);
+            try {
+                for (DishOrder item : orderToSave.getDishOrderList()) {
+                    Dish dish = item.getDish();
+                    for (DishIngredient di : dish.getDishIngredients()) {
+                        double totalRequired = di.getQuantityRequired() * item.getQuantity();
+                        double stockDisponible = getCurrentStock(conn, di.getIngredient().getId());
+
+                        if (stockDisponible < totalRequired) {
+                            throw new RuntimeException("L'ingrédient " + di.getIngredient().getName() + " ne suffit pas");
+                        }
+                    }
+                }
+
+                // --- B) SAUVEGARDE DE LA COMMANDE ---
+                int orderId;
+                try (PreparedStatement ps = conn.prepareStatement(sqlOrder)) {
+                    ps.setString(1, orderToSave.getReference());
+                    ps.setTimestamp(2, Timestamp.from(orderToSave.getCreationDatetime()));
+                    try (ResultSet rs = ps.executeQuery()) {
+                        rs.next();
+                        orderId = rs.getInt(1);
+                        orderToSave.setId(orderId);
+                    }
+                }
+                try (PreparedStatement ps = conn.prepareStatement(sqlDishOrder)) {
+                    for (DishOrder item : orderToSave.getDishOrderList()) {
+                        ps.setInt(1, orderId);
+                        ps.setInt(2, item.getDish().getId());
+                        ps.setInt(3, item.getQuantity());
+                        ps.addBatch();
+                    }
+                    ps.executeBatch();
+                }
+
+                conn.commit();
+                return orderToSave;
+            } catch (Exception e) {
+                conn.rollback();
+                throw new RuntimeException(e.getMessage(), e);
+            }
+        } catch (SQLException e) {
+            throw new RuntimeException(e);
+        }
+    }
+
     public Dish findDishById(Integer id) {
         String sql = "SELECT id, name, dish_type, selling_price FROM dish WHERE id = ?";
         try (Connection conn = new DBConnection().getConnection();
@@ -62,6 +132,7 @@ public class DataRetriever {
         }
         return list;
     }
+
 
 
     public Dish saveDish(Dish toSave) {
@@ -203,5 +274,51 @@ public class DataRetriever {
             throw new RuntimeException("Erreur sauvegarde cascade : " + e.getMessage());
         }
         return toSave;
+    }
+    Order findOrderByReference(String reference) {
+        DBConnection dbConnection = new DBConnection();
+        try (Connection connection = dbConnection.getConnection()) {
+            PreparedStatement preparedStatement = connection.prepareStatement("""
+                    select id, reference, creation_datetime from "order" where reference like ?""");
+            preparedStatement.setString(1, reference);
+            ResultSet resultSet = preparedStatement.executeQuery();
+            if (resultSet.next()) {
+                Order order = new Order();
+                Integer idOrder = resultSet.getInt("id");
+                order.setId(idOrder);
+                order.setReference(resultSet.getString("reference"));
+                order.setCreationDatetime(resultSet.getTimestamp("creation_datetime").toInstant());
+                order.setDishOrderList(findDishOrderByIdOrder(idOrder));
+                return order;
+            }
+            throw new RuntimeException("Order not found with reference " + reference);
+        } catch (SQLException e) {
+            throw new RuntimeException(e);
+        }
+    }
+    private List<DishOrder> findDishOrderByIdOrder(Integer idOrder) {
+        DBConnection dbConnection = new DBConnection();
+        Connection connection = dbConnection.getConnection();
+        List<DishOrder> dishOrders = new ArrayList<>();
+        try {
+            PreparedStatement preparedStatement = connection.prepareStatement(
+                    """
+                            select id, id_dish, quantity from dish_order where dish_order.id_order = ?
+                            """);
+            preparedStatement.setInt(1, idOrder);
+            ResultSet resultSet = preparedStatement.executeQuery();
+            while (resultSet.next()) {
+                Dish dish = findDishById(resultSet.getInt("id_dish"));
+                DishOrder dishOrder = new DishOrder();
+                dishOrder.setId(resultSet.getInt("id"));
+                dishOrder.setQuantity(resultSet.getInt("quantity"));
+                dishOrder.setDish(dish);
+                dishOrders.add(dishOrder);
+            }
+            dbConnection.closeConnection(connection);
+            return dishOrders;
+        } catch (SQLException e) {
+            throw new RuntimeException(e);
+        }
     }
 }
