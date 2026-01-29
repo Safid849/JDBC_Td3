@@ -14,7 +14,8 @@ CREATE TABLE dish (
                       id SERIAL PRIMARY KEY,
                       name VARCHAR(100) NOT NULL,
                       dish_type dish_type NOT NULL,
-                      price NUMERIC(10, 2) ;
+                      price NUMERIC(10, 2)
+                  );
 
 CREATE TABLE DishIngredient (
                                 id SERIAL PRIMARY KEY,
@@ -33,19 +34,20 @@ CREATE TABLE stock_movement (
                                 creation_datetime TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP
 );
 
-CREATE SEQUENCE order_ref_seq;
+alter table ingredient
+    add column if not exists initial_stock numeric(10, 2);
 
-CREATE TABLE "order" (
-                         id SERIAL PRIMARY KEY,
-                         reference VARCHAR(10) UNIQUE NOT NULL
-                                                     DEFAULT 'ORD' || LPAD(nextval('order_ref_seq')::text, 5, '0')
-                             CHECK (reference ~ '^ORD[0-9]{5}$'),
-                         creation_datetime TIMESTAMP DEFAULT CURRENT_TIMESTAMP NOT NULL
+create table if not exists "order"
+(
+    id                serial primary key,
+    reference         varchar(255),
+    creation_datetime timestamp without time zone
 );
 
-CREATE TABLE dish_order (
-                            id SERIAL PRIMARY KEY,
-                            id_order INT REFERENCES "order"(id) ON DELETE CASCADE,
-                            id_dish INT REFERENCES dish(id),
-                            quantity INT NOT NULL CHECK (quantity > 0)
+create table if not exists dish_order
+(
+    id       serial primary key,
+    id_order int references "order" (id),
+    id_dish  int references dish (id),
+    quantity int
 );
