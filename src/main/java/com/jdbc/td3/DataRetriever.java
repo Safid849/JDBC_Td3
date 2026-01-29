@@ -8,10 +8,11 @@ import java.util.List;
 public class DataRetriever {
 
     private boolean isTableAvailable(Connection conn, int tableId, Instant time) throws SQLException {
-        String sql = "SELECT COUNT(*) FROM \"order\" WHERE id_table = ? AND ? BETWEEN installation_datetime AND departure_datetime";
+        String sql = "SELECT COUNT(*) FROM \"order\" WHERE id_table = ? AND ? >= installation_datetime AND ? <= departure_datetime";
         try (PreparedStatement ps = conn.prepareStatement(sql)) {
             ps.setInt(1, tableId);
             ps.setTimestamp(2, Timestamp.from(time));
+            ps.setTimestamp(3, Timestamp.from(time));
             try (ResultSet rs = ps.executeQuery()) {
                 rs.next();
                 return rs.getInt(1) == 0;
@@ -61,6 +62,7 @@ public class DataRetriever {
         try (Connection conn = new DBConnection().getConnection()) {
             conn.setAutoCommit(false);
             try {
+                // ÉTAPE A : Validation Table (Espace)
                 if (!isTableAvailable(conn, orderToSave.getTable().getId(), orderToSave.getInstallationDatetime())) {
                     List<Integer> freeTables = getAvailableTableNumbers(conn, orderToSave.getInstallationDatetime());
                     if (freeTables.isEmpty()) {
@@ -71,6 +73,7 @@ public class DataRetriever {
                     }
                 }
 
+                // ÉTAPE B : Validation Stock (Avant toute insertion)
                 for (DishOrder item : orderToSave.getDishOrderList()) {
                     for (DishIngredient di : item.getDish().getDishIngredients()) {
                         double required = di.getQuantityRequired() * item.getQuantity();
@@ -79,17 +82,33 @@ public class DataRetriever {
                         }
                     }
                 }
-                String sql = "INSERT INTO \"order\" (reference, creation_datetime, id_table, installation_datetime, departure_datetime) VALUES (?, ?, ?, ?, ?) RETURNING id";
-                try (PreparedStatement ps = conn.prepareStatement(sql)) {
+
+                // ÉTAPE C : Insertion de la commande ("order") D'ABORD
+                String sqlOrder = "INSERT INTO \"order\" (reference, creation_datetime, id_table, installation_datetime, departure_datetime) VALUES (?, ?, ?, ?, ?) RETURNING id";
+                try (PreparedStatement ps = conn.prepareStatement(sqlOrder)) {
                     ps.setString(1, orderToSave.getReference());
                     ps.setTimestamp(2, Timestamp.from(orderToSave.getCreationDatetime()));
                     ps.setInt(3, orderToSave.getTable().getId());
                     ps.setTimestamp(4, Timestamp.from(orderToSave.getInstallationDatetime()));
                     ps.setTimestamp(5, orderToSave.getDepartureDatetime() != null ? Timestamp.from(orderToSave.getDepartureDatetime()) : null);
 
-                    ResultSet rs = ps.executeQuery();
-                    rs.next();
-                    orderToSave.setId(rs.getInt(1));
+                    try (ResultSet rs = ps.executeQuery()) {
+                        if (rs.next()) {
+                            orderToSave.setId(rs.getInt(1)); // On récupère l'ID généré par le SERIAL
+                        }
+                    }
+                }
+
+                // ÉTAPE D : Insertion des lignes (dish_order) MAINTENANT qu'on a l'ID
+                String sqlLines = "INSERT INTO dish_order (id_order, id_dish, quantity) VALUES (?, ?, ?)";
+                try (PreparedStatement psLines = conn.prepareStatement(sqlLines)) {
+                    for (DishOrder line : orderToSave.getDishOrderList()) {
+                        psLines.setInt(1, orderToSave.getId()); // Utilisation de l'ID récupéré
+                        psLines.setInt(2, line.getDish().getId());
+                        psLines.setInt(3, line.getQuantity());
+                        psLines.addBatch();
+                    }
+                    psLines.executeBatch();
                 }
 
                 conn.commit();
